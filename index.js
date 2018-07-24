@@ -4,6 +4,7 @@ const local = require('./config/local.js')
 const WebpackServer = require('./controllers/webpack.js')
 const endpoints = require('./override/endpoints.js')
 const Cookies = require('cookies')
+const NativeMiddleware = require('cubic-api/middleware/native/express.js')
 
 class Ui {
   constructor (options) {
@@ -35,6 +36,14 @@ class Ui {
       // Move cookie middleware to the beginning of the stack
       const middlewareStack = cubic.nodes.ui.api.server.http.app._router.stack
       middlewareStack.unshift(middlewareStack.pop())
+
+      let middlewareAuth = middlewareStack.find((obj) => { return obj.name === 'bound auth' })
+
+      // Construct new auth middleware
+      const newNativeMiddleware = new NativeMiddleware(cubic.nodes.ui.api.server.config)
+
+      // Replace old with new auth
+      middlewareAuth.handle = newNativeMiddleware.auth.bind(newNativeMiddleware)
     }
 
     // Build webpack bundles
