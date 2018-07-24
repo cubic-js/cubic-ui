@@ -43,7 +43,8 @@ module.exports = {
   client: {
     apiUrl: 'http://localhost:3003',
     authUrl: 'http://localhost:3030',
-    accessTokenCookie: 'cubic-ui-cookie-access-token'
+    accessTokenCookie: 'cubic-ui-cookie-access-token',
+    refreshTokenCookie: 'cubic-ui-cookie-refresh-token'
   },
 
   /**
