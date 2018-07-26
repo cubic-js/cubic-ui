@@ -1,10 +1,11 @@
 const Core = require('cubic-core')
-const API = require('cubic-api')
+const API = require('../cubic-api')
 const local = require('./config/local.js')
 const WebpackServer = require('./controllers/webpack.js')
 const endpoints = require('./override/endpoints.js')
 const Cookies = require('cookies')
-const NativeMiddleware = require('cubic-api/middleware/native/express.js')
+const NativeMiddleware = require('../cubic-api/middleware/native/express.js')
+const request = require('request-promise')
 
 class Ui {
   constructor (options) {
@@ -34,20 +35,52 @@ class Ui {
         }
         if (refreshToken) req.refresh_token = refreshToken
 
-        next()
+        return next()
       })
 
       // Move cookie middleware to the beginning of the stack
       const middlewareStack = cubic.nodes.ui.api.server.http.app._router.stack
       middlewareStack.unshift(middlewareStack.pop())
 
-      let middlewareAuth = middlewareStack.find((obj) => { return obj.name === 'bound auth' })
-
       // Construct new auth middleware
       const newNativeMiddleware = new NativeMiddleware(cubic.nodes.ui.api.server.config)
+      newNativeMiddleware.rejectInvalidToken = (req, res, next, err) => {
+        if (!req.refresh_token) {
+          return res.status(400).json({
+            error: 'Invalid Token',
+            reason: err
+          })
+        }
+
+        request({
+          method: 'POST',
+          uri: cubic.config.ui.core.authUrl + '/refresh',
+          body: {
+            refresh_token: req.refresh_token
+          },
+          json: true
+        }).then((body) => {
+          const accessToken = body.access_token
+          console.log(accessToken)
+          if (!accessToken) {
+            return res.status(400).json({
+              error: 'Invalid Token',
+              reason: body
+            })
+          }
+
+          delete req.refresh_token
+          req.access_token = accessToken
+          req.headers.authorization = `bearer ${accessToken}`
+
+          return newNativeMiddleware.auth(req, res, next)
+        })
+      }
 
       // Replace old with new auth
-      middlewareAuth.handle = newNativeMiddleware.auth.bind(newNativeMiddleware)
+      cubic.nodes.ui.api.server.http.app.use(newNativeMiddleware.auth.bind(newNativeMiddleware))
+      let index = middlewareStack.findIndex((obj) => { return obj.name === 'bound auth' })
+      middlewareStack.splice(index, 1, middlewareStack.pop())
     }
 
     // Build webpack bundles
