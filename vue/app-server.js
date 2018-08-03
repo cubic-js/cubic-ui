@@ -11,6 +11,7 @@ export default function (context) {
     const { app, router, store } = createApp(context)
 
     if (context.req.access_token) app.$cubic.setAccessToken(context.req.access_token)
+    if (context.req.refresh_token) app.$cubic.setRefreshToken(context.req.refresh_token)
 
     // Init vue-meta
     const meta = app.$meta()
@@ -47,8 +48,9 @@ export default function (context) {
       // the initial data fetching on the client.
       context.state = store.state
 
-      // Give access token to state so the client can use it
+      // Give tokens to state so the client can use them
       if (context.req.access_token) context.state.$access_token = context.req.access_token
+      if (context.req.refresh_token) context.state.$refresh_token = context.req.refresh_token
 
       // Finally, add meta tags to context for injection in renderer
       context.meta = { inject: function () { Object.assign(this, meta.inject()) } }
