@@ -10,6 +10,8 @@ export default function (context) {
   return new Promise((resolve, reject) => {
     const { app, router, store } = createApp(context)
 
+    if (context.req.access_token) app.$cubic.setAccessToken(context.req.access_token)
+
     // Init vue-meta
     const meta = app.$meta()
 
@@ -44,6 +46,9 @@ export default function (context) {
       // store to pick-up the server-side state without having to duplicate
       // the initial data fetching on the client.
       context.state = store.state
+
+      // Give access token to state so the client can use it
+      if (context.req.access_token) context.state.$access_token = context.req.access_token
 
       // Finally, add meta tags to context for injection in renderer
       context.meta = { inject: function () { Object.assign(this, meta.inject()) } }
